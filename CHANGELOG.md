@@ -25,6 +25,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - El rollback de pánico no falla si la tabla nftables de lockdown ya no existe.
 - Las consultas de estado de servicios (habilitado/existe) funcionan sin systemd como PID 1, evitando que el rollback
   deshabilitara firewalld en entornos sin systemd.
+- USR-03 en `--dry-run` sin root ya no da un falso FALLÓ: visudo exige que el archivo sea de root (modo 440),
+  así que sin root se omite la validación (nada se escribe en dry-run).
 - Los scripts auxiliares se invocan siempre con `bash`, así que funcionan aunque se pierda el bit de ejecución.
 
 ## [1.0.0] — 2026-11-15

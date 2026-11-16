@@ -105,7 +105,14 @@ Defaults logfile="/var/log/sudo.log"
 Defaults timestamp_timeout=5
 CONF
   # Validar SIEMPRE con visudo antes de instalar: un sudoers roto deja sin sudo.
-  if have visudo && ! visudo -cqf "$tmp"; then note "visudo rechazó el archivo"; rm -f "$tmp"; return 1; fi
+  # visudo exige que el archivo sea de root y modo 440, así que sin root (sólo posible en
+  # --dry-run, donde no se escribe nada) la validación se omite en lugar de dar un falso error.
+  chmod 440 "$tmp"
+  if have visudo && (( EUID == 0 )); then
+    if ! visudo -cqf "$tmp"; then note "visudo rechazó el archivo"; rm -f "$tmp"; return 1; fi
+  elif have visudo; then
+    note "validación con visudo omitida (requiere root)"
+  fi
   write_file "$SUDO_DROPIN" 440 <"$tmp"
   rm -f "$tmp"
   if have visudo && ! (( DRY_RUN )) && ! visudo -cq; then
