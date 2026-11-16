@@ -18,7 +18,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Resumen final **"Requiere reinicio / Servicios recargados / Efectivo inmediatamente / Nuevas sesiones"** y aviso
   `/run/reboot-required` cuando procede.
 - Nuevas opciones de configuración: `SAFE_MODE`, `FW_AUTO_ALLOW_MAXLEVEL`, `KEEP_SHELL_USERS`, `DIFF_CONSOLE_LINES`.
-- CI con GitHub Actions: ShellCheck, `--list-controls` y dry-run/audit sin root.
+- CI con GitHub Actions: ShellCheck, `--list-controls`, pre-check y dry-run/audit sin root de los 4 niveles (matriz en paralelo).
 
 ### Corregido
 - `useradd -D` (USR-11) dejaba `/etc/default/useradd` con modo 600 por el `umask 077` del script.

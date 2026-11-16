@@ -9,10 +9,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   shellcheck:
-    name: ShellCheck y pruebas sin root
+    name: ShellCheck y metadatos
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -34,18 +39,30 @@ jobs:
           bash harden.sh --list-controls --level medio --format text | tail -n 3
           bash tests/check-meta.sh
 
-      - name: Dry-run y auditoría sin root (los 4 niveles)
+      - name: Pre-check de cargas críticas (sin root)
+        env:
+          NO_COLOR: "1"
+        run: bash harden.sh --precheck
+
+  # Cada nivel/modo en un job paralelo: el runner tiene un sistema de archivos enorme y
+  # los controles que recorren / (SUID, world-writable, sin dueño) tardan varios minutos.
+  dry-run:
+    name: ${{ matrix.level }} ${{ matrix.mode }} (sin root)
+    needs: shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        level: [basico, medio, maximo, panico]
+        mode: ["--dry-run", "--audit"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: harden.sh --level ${{ matrix.level }} ${{ matrix.mode }}
         env:
           NO_COLOR: "1"
         run: |
-          set -o pipefail
-          for lvl in basico medio maximo panico; do
-            for mode in --dry-run --audit; do
-              echo "::group::$lvl $mode"
-              bash harden.sh --level "$lvl" "$mode" --yes > "out-$lvl$mode.log" 2>&1 \
-                || { cat "out-$lvl$mode.log"; echo "::error::$lvl $mode falló"; exit 1; }
-              grep -E '^Resumen' "out-$lvl$mode.log"
-              echo "::endgroup::"
-            done
-          done
-          bash harden.sh --precheck > out-precheck.log 2>&1 && tail -n 5 out-precheck.log
+          bash harden.sh --level "${{ matrix.level }}" "${{ matrix.mode }}" --yes > out.log 2>&1 \
+            || { cat out.log; echo "::error::${{ matrix.level }} ${{ matrix.mode }} falló"; exit 1; }
+          sed -n '/^=== EFECTO/,$p' out.log
