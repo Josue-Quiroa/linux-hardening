@@ -1,0 +1,51 @@
+name: ShellCheck
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: ShellCheck y pruebas sin root
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar ShellCheck v0.11.0
+        run: |
+          curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz \
+            | tar -xJ -C /tmp
+          sudo install -m 755 /tmp/shellcheck-v0.11.0/shellcheck /usr/local/bin/shellcheck
+
+      - name: ShellCheck (todos los .sh)
+        run: |
+          shellcheck --version
+          shellcheck -x -P SCRIPTDIR -s bash harden.sh lib/*.sh modules/*.sh tests/*.sh
+
+      - name: --list-controls (JSON válido) y cobertura de metadatos
+        run: |
+          bash harden.sh --list-controls --format json > controles.json
+          python3 -c "import json; d=json.load(open('controles.json')); print(len(d['controls']), 'controles')"
+          bash harden.sh --list-controls --level medio --format text | tail -n 3
+          bash tests/check-meta.sh
+
+      - name: Dry-run y auditoría sin root (los 4 niveles)
+        env:
+          NO_COLOR: "1"
+        run: |
+          set -o pipefail
+          for lvl in basico medio maximo panico; do
+            for mode in --dry-run --audit; do
+              echo "::group::$lvl $mode"
+              bash harden.sh --level "$lvl" "$mode" --yes > "out-$lvl$mode.log" 2>&1 \
+                || { cat "out-$lvl$mode.log"; echo "::error::$lvl $mode falló"; exit 1; }
+              grep -E '^Resumen' "out-$lvl$mode.log"
+              echo "::endgroup::"
+            done
+          done
+          bash harden.sh --precheck > out-precheck.log 2>&1 && tail -n 5 out-precheck.log
