@@ -1,0 +1,26 @@
+# Reportes y salidas generadas por harden.sh
+out-*.log
+/report.*
+reports/
+/changes.diff
+/changes.tsv
+/results.tsv
+/precheck.tsv
+/effects.tsv
+/harden.log
+/controles.json
+/controles.csv
+
+# Backups y directorios de ejecución
+backups/
+hardening-*/
+/var/
+
+# Empaquetados y temporales
+*.zip
+*.tar.gz
+tmp/
+*.tmp
+*.swp
+*~
+.DS_Store
